@@ -1,0 +1,8 @@
+BEGIN;
+
+ALTER TABLE metric_rollups_hourly
+  ADD COLUMN IF NOT EXISTS p95_latency_ms DOUBLE PRECISION NULL;
+
+COMMIT;
+
+
