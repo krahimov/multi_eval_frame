@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS dead_letter_events_recent_idx
 COMMIT;
 
 
+

@@ -299,7 +299,7 @@ async function upsertAgentRunCompletedAndEval(db: DbClient, e: v1.AgentRunComple
       $11, $12, $13, $14, $15,
       $16, $17, $18, $19, $20,
       $21, $22,
-      now()
+      $23::timestamptz
     )
     ON CONFLICT (tenant_id, agent_run_id) DO NOTHING
   `,
@@ -325,12 +325,17 @@ async function upsertAgentRunCompletedAndEval(db: DbClient, e: v1.AgentRunComple
       normalized.coverage_norm,
       normalized.confidence_norm,
       agg.run_quality_score,
-      agg.risk_score
+      agg.risk_score,
+      e.event_time
     ]
   );
 }
 
 async function upsertSignal(db: DbClient, e: v1.SignalEmittedEventV1): Promise<void> {
+  const instrumentUniverseJson = JSON.stringify(e.signal.instrument_universe);
+  const signalValueJson = JSON.stringify(e.signal.signal_value);
+  const constraintsJson = e.signal.constraints == null ? null : JSON.stringify(e.signal.constraints);
+
   await db.query(
     `
     INSERT INTO signals (
@@ -377,10 +382,10 @@ async function upsertSignal(db: DbClient, e: v1.SignalEmittedEventV1): Promise<v
       e.agent?.agent_version ?? null,
       e.signal.prediction_type,
       e.signal.horizon,
-      e.signal.instrument_universe as unknown as object,
-      e.signal.signal_value as unknown as object,
+      instrumentUniverseJson,
+      signalValueJson,
       e.signal.confidence ?? null,
-      (e.signal.constraints ?? null) as unknown as object
+      constraintsJson
     ]
   );
 }
@@ -442,6 +447,17 @@ export async function runRealtimeWorkerOnce(
   opts: RealtimeWorkerOptions = DEFAULT_REALTIME_WORKER_OPTIONS
 ): Promise<{ processed: number; failed: number }> {
   const client = await pool.connect();
+  // Prevent unhandled 'error' events from crashing the process (Neon can timeout idle TLS sockets).
+  // IMPORTANT: pool clients are reused, so attach this listener only once per Client instance.
+  const errorListenerFlag = Symbol.for("evalservice.pgClientErrorListenerAttached");
+  const anyClient = client as any;
+  if (!anyClient[errorListenerFlag]) {
+    anyClient[errorListenerFlag] = true;
+    client.on("error", (err) => {
+      // eslint-disable-next-line no-console
+      console.error("pg client error", err);
+    });
+  }
   try {
     await client.query("BEGIN");
     const rows = await fetchAndLockUnprocessedEvents(client, opts);
@@ -489,9 +505,17 @@ export async function runRealtimeWorkerLoop(
 ): Promise<void> {
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const res = await runRealtimeWorkerOnce(pool, opts);
-    // eslint-disable-next-line no-console
-    if (res.processed === 0 && res.failed === 0) await new Promise((r) => setTimeout(r, 500));
+    try {
+      const res = await runRealtimeWorkerOnce(pool, opts);
+      if (res.processed === 0 && res.failed === 0) {
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } catch (err) {
+      // Backoff on transient DB/network failures.
+      // eslint-disable-next-line no-console
+      console.error("realtime worker loop error", err);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
   }
 }
 

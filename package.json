@@ -15,6 +15,9 @@
     "backtest:run": "tsx src/bin/backtest.ts",
     "job:auto-eval": "tsx src/bin/autoEval.ts",
     "job:slo-alerts": "tsx src/bin/sloAlert.ts",
+    "job:anomalies": "tsx src/bin/anomalyJob.ts",
+    "seed:demo": "tsx src/bin/seedDemo.ts",
+    "demo:agent": "tsx src/bin/demoAgent.ts",
     "test": "npm run build --silent && node test/run-tests.mjs",
     "test:watch": "npm run test --silent",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -28,6 +31,7 @@
     "ajv-formats": "^3.0.1",
     "dotenv": "^16.4.7",
     "fastify": "^4.29.1",
+    "jstat": "^1.9.6",
     "pino": "^9.6.0",
     "pg": "^8.13.1",
     "prom-client": "^15.1.3",

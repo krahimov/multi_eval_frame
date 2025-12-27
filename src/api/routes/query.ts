@@ -102,6 +102,25 @@ export function registerQueryRoutes(app: FastifyInstance, deps: { pool: pg.Pool 
     return { ok: true, tenant_id: tenantId, rows: rows.rows };
   });
 
+  app.get("/shifts", async (req) => {
+    const tenantId = getTenantIdFromReq(req);
+    const limit = Math.min(500, Math.max(1, Number((req.query as any).limit ?? "100")));
+
+    const rows = await deps.pool.query(
+      `
+      SELECT created_at, shift_id::text, workflow_id, agent_id, agent_version, metric_name,
+             method, p_value, bh_adjusted_p_value, effect_size, significant, details
+      FROM performance_shifts
+      WHERE tenant_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `,
+      [tenantId, limit]
+    );
+
+    return { ok: true, tenant_id: tenantId, rows: rows.rows };
+  });
+
   app.get("/backtests", async (req) => {
     const tenantId = getTenantIdFromReq(req);
     const limit = Math.min(200, Math.max(1, Number((req.query as any).limit ?? "50")));
@@ -154,5 +173,6 @@ export function registerQueryRoutes(app: FastifyInstance, deps: { pool: pg.Pool 
     return { ok: true, tenant_id: tenantId, rows: rows.rows };
   });
 }
+
 
 

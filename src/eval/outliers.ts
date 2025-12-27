@@ -128,3 +128,4 @@ export function detectOutlierIQR(values: number[], value: number, k = 1.5): Outl
 }
 
 
+

@@ -39,3 +39,4 @@ export function registerApiKeyAuth(app: FastifyInstance): void {
 }
 
 
+

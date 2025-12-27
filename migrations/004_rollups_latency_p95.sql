@@ -6,3 +6,4 @@ ALTER TABLE metric_rollups_hourly
 COMMIT;
 
 
+

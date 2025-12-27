@@ -1,4 +1,7 @@
 import { mean, stddevSample } from "./outliers.js";
+import jstatPkg from "jstat";
+
+const jStat: any = (jstatPkg as any).jStat ?? jstatPkg;
 
 export interface WelchTTestResult {
   t_stat: number;
@@ -60,9 +63,8 @@ export function welchTTest(a: number[], b: number[]): WelchTTestResult {
   const den = (varA * varA) / (nA * nA * (nA - 1)) + (varB * varB) / (nB * nB * (nB - 1));
   const df = den === 0 ? nA + nB - 2 : num / den;
 
-  // For large df, approximate Student-t with Normal.
-  const p =
-    Number.isFinite(t) ? 2 * (1 - normalCdf(Math.abs(t))) : 0;
+  // Two-sided p-value using Student-t CDF with Welch df.
+  const p = Number.isFinite(t) ? 2 * (1 - jStat.studentt.cdf(Math.abs(t), df)) : 0;
 
   return {
     t_stat: t,

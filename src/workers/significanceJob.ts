@@ -75,7 +75,7 @@ export async function runSignificanceJob(
       agent_version: r.agent_version,
       p_value: t.p_value_two_sided,
       effect_size: t.effect_size,
-      details: { ...t, metric: opts.metric, approx: "normal" }
+      details: { ...t, metric: opts.metric, distribution: "student_t" }
     });
   }
 
@@ -114,7 +114,7 @@ export async function runSignificanceJob(
         opts.metric,
         aStart,
         bStart,
-        "welch_normal_approx",
+        "welch_t_test",
         t.p_value,
         bhAdjusted,
         t.effect_size,
@@ -229,5 +229,6 @@ export async function runSignificanceJob(
 
   return { tests_run: tests.length, shifts_written: written };
 }
+
 
 

@@ -19,10 +19,27 @@ export function getDbConfigFromEnv(): DbConfig {
 }
 
 export function createPool(config: DbConfig): pg.Pool {
-  return new pg.Pool({
+  const needsSsl =
+    process.env.PG_SSL === "true" ||
+    config.databaseUrl.includes("neon.tech") ||
+    config.databaseUrl.includes("sslmode=require");
+
+  const pool = new pg.Pool({
     connectionString: config.databaseUrl,
-    max: config.maxPoolSize
+    max: config.maxPoolSize,
+    connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS ?? "10000"),
+    idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS ?? "30000"),
+    keepAlive: true,
+    ssl: needsSsl ? { rejectUnauthorized: false } : undefined
   });
+
+  // Prevent unhandled 'error' events from crashing the process.
+  pool.on("error", (err) => {
+    // eslint-disable-next-line no-console
+    console.error("pg pool error", err);
+  });
+
+  return pool;
 }
 
 
